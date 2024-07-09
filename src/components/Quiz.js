@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
@@ -22,6 +22,22 @@ const Quiz = () => {
   const [showPasskeyInput, setShowPasskeyInput] = useState(false);
   const [wordInputs, setWordInputs] = useState([{ word: '', synonyms: '' }]);
   const [bulkWords, setBulkWords] = useState('');
+  const [typingText, setTypingText] = useState('');
+
+  const message = "vocabulary refined daily according to insights from 'The Hindu' editorials.";
+
+  useEffect(() => {
+    let index = 0;
+    const interval = setInterval(() => {
+      setTypingText((prev) => prev + message.charAt(index));
+      index += 1;
+      if (index === message.length) {
+        clearInterval(interval);
+      }
+    }, 50);
+
+    return () => clearInterval(interval);
+  }, []);
 
   const fetchWordPairs = async () => {
     if (showWordPairs) {
@@ -99,7 +115,7 @@ const Quiz = () => {
       setPasskeyError('');
     } else {
       setCanAddWords(false);
-      setPasskeyError('Incorrect passkey');
+      setPasskeyError('Incorrect passkey, only admins can add words');
     }
   };
 
@@ -176,15 +192,17 @@ const Quiz = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 p-4">
+    <div className="min-h-screen bg-gray-100 flex flex-col justify-between p-4">
       <div className="max-w-3xl mx-auto bg-white p-6 rounded shadow">
-        <h2 className="text-2xl mb-4">🙏WORDLY🙏</h2>
+        <h2 className="text-2xl mb-4 text-center">🙏WORDLY🙏</h2>
+        <p className="my-8 text-center">Note:Vocabulary refined daily according to insights from 'The Hindu' editorials.</p>
+        <p className="mb-4 text-center">Bulletin: Quiz will be available soon...</p>
         <button
           className={`bg-green-400 text-white py-2 px-4 rounded hover:bg-green-500 ${loading && 'opacity-50'}`}
           onClick={fetchWordPairs}
           disabled={loading}
         >
-          {loading ? 'Loading...' : showWordPairs ? 'Hide Word Pairs' : 'Fetch Word Pairs'}
+          {loading ? 'Loading...' : showWordPairs ? 'Hide Word Pairs' : 'Fetch all Word Pairs'}
         </button>
         {showWordPairs && (
           <ul className="mt-4">
@@ -354,6 +372,9 @@ const Quiz = () => {
           )}
         </div>
       </div>
+      <footer className="text-center mt-8 py-4">
+        Made with ❤️ by Adirohah's Production
+      </footer>
     </div>
   );
 };
