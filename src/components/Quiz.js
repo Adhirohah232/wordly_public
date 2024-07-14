@@ -210,15 +210,19 @@ const App = () => {
     }
   };
 
-  const handleRandomQuizClick = () => {
-    const savedWordPairs = localStorage.getItem('wordPairs');
-    if (savedWordPairs) {
-      setWordPairs(JSON.parse(savedWordPairs));
+  const handleRandomQuizClick = async () => {
+    setLoading(true);
+    try {
+      const response = await axios.get('https://wordly-backend.onrender.com/words/all', { withCredentials: false });
+      setWordPairs(response.data);
+      localStorage.setItem('wordPairs', JSON.stringify(response.data)); // Save to localStorage
       setQuizActive(true);
       setNumberOfAttempts('');
       setCurrentQuestions([]);
-    } else {
-      alert('No word pairs found, please press- fetch all word pairs button first before starting the Quiz.');
+    } catch (error) {
+      console.error('Error fetching data:', error.message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -242,29 +246,63 @@ const App = () => {
     return shuffled.slice(0, count);
   };
 
-  const generateOptions = (question) => {
-    if (!question) return [];
-    const correctOption = Object.values(question)[0][0];
-    let allOptions = wordPairs
-      .filter(pair => Object.keys(pair)[0] !== Object.keys(question)[0])
-      .slice(0, 3)
-      .map(pair => {
-        const synonyms = Object.values(pair)[0];
-        return synonyms[Math.floor(Math.random() * synonyms.length)];
-      });
+  const generateQuestionAndOptions = () => {
+    // Randomly decide whether to ask about a word or a synonym (50% chance each)
+    const questionType = Math.random() < 0.5 ? 'word' : 'synonym';
+    const randomPair = wordPairs[Math.floor(Math.random() * wordPairs.length)];
 
-    allOptions.push(correctOption);
-    return allOptions.sort(() => 0.5 - Math.random()); // Shuffle options
+    if (questionType === 'word') {
+      const word = Object.keys(randomPair)[0];
+      const correctOption = Object.values(randomPair)[0][0]; // Pick a random correct synonym
+      const options = generateIncorrectOptions(correctOption, 'synonym');
+      options.push(correctOption);
+      shuffleArray(options);
+      return { question: word, options, correctAnswer: correctOption, isSynonymQuestion: false };
+    } else {
+      const synonymArray = Object.values(randomPair)[0];
+      const correctSynonym = synonymArray[Math.floor(Math.random() * synonymArray.length)];
+      const correctOption = Object.keys(randomPair)[0];
+      const options = generateIncorrectOptions(correctOption, 'word');
+      options.push(correctOption);
+      shuffleArray(options);
+      return { question: correctSynonym, options, correctAnswer: correctOption, isSynonymQuestion: true };
+    }
+  };
+
+  const generateIncorrectOptions = (correctOption, type) => {
+    let pool = [];
+    if (type === 'synonym') {
+      pool = wordPairs.flatMap(pair => Object.values(pair)[0]);
+    } else if (type === 'word') {
+      pool = wordPairs.flatMap(pair => Object.keys(pair));
+    }
+    pool = pool.filter(option => option !== correctOption);
+    const incorrectOptions = [];
+    while (incorrectOptions.length < 3) {
+      const randomOption = pool[Math.floor(Math.random() * pool.length)];
+      if (!incorrectOptions.includes(randomOption)) {
+        incorrectOptions.push(randomOption);
+      }
+    }
+    return incorrectOptions;
+  };
+
+  // Utility function to shuffle an array
+  const shuffleArray = (array) => {
+    for (let i = array.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [array[i], array[j]] = [array[j], array[i]];
+    }
   };
 
   const handleAnswerSubmit = () => {
     const question = currentQuestions[currentQuestionIndex];
-    const correctAnswer = Object.values(question)[0][0];
+    const correctAnswer = question.correctAnswer;
 
     if (userAnswer === correctAnswer) {
       setCorrectAnswers(prevCorrectAnswers => prevCorrectAnswers + 1);
     } else {
-      recordIncorrectAnswer(question, userAnswer, correctAnswer);
+      recordIncorrectAnswer(question.question, userAnswer, correctAnswer);
       setFeedbackMessage(`Wrong! Correct answer: ${correctAnswer}`);
       if (currentQuestionIndex + 1 < numberOfAttempts) {
         setShowFeedbackPopup(true);
@@ -283,24 +321,32 @@ const App = () => {
     }
   };
 
-  const recordIncorrectAnswer = (question, userAnswer, correctAnswer) => {
-    const questionText = `What is the synonym for '${Object.keys(question)[0]}'?`;
+  const recordIncorrectAnswer = (questionText, userAnswer, correctAnswer) => {
+    const questionDisplay = currentQuestions[currentQuestionIndex].isSynonymQuestion
+      ? `What word matches the synonym '${questionText}'?`
+      : `What is the synonym for '${questionText}'?`;
+    const correctPair = wordPairs.find(pair => Object.keys(pair)[0] === correctAnswer) 
+      || wordPairs.find(pair => Object.values(pair)[0].includes(questionText));
+    const allSynonyms = currentQuestions[currentQuestionIndex].isSynonymQuestion
+      ? (correctPair ? Object.values(correctPair)[0] : [])
+      : (correctPair ? Object.values(correctPair)[0] : []);
+  
     setIncorrectQuestions(prevIncorrectQuestions => [
       ...prevIncorrectQuestions,
       {
-        question: questionText,
+        question: questionDisplay,
         userAnswer: userAnswer || 'No answer selected',
         correctAnswer,
-        allSynonyms: Object.values(question)[0]
+        allSynonyms: allSynonyms || []
       }
     ]);
   };
 
   const displayQuestion = (questions, index) => {
-    const question = questions[index];
-    const options = generateOptions(question);
+    const questionData = generateQuestionAndOptions();
+    questions[index] = questionData;
     setCurrentQuestionIndex(index);
-    setOptions(options); // Ensure options are set correctly before rendering
+    setOptions(questionData.options); // Ensure options are set correctly before rendering
     setUserAnswer('');
   };
 
@@ -528,7 +574,9 @@ const App = () => {
         {currentQuestions.length > 0 && currentQuestionIndex < numberOfAttempts && (
           <div className="mt-4">
             <p className="text-xl mb-4">
-              What is the synonym for '{Object.keys(currentQuestions[currentQuestionIndex])[0]}'?
+              {currentQuestions[currentQuestionIndex].isSynonymQuestion
+                ? `What word matches the synonym '${currentQuestions[currentQuestionIndex].question}'?`
+                : `What is the synonym for '${currentQuestions[currentQuestionIndex].question}'?`}
             </p>
             {options.map((option, index) => (
               <div key={index}>
@@ -577,7 +625,7 @@ const App = () => {
               className="bg-blue-400 text-white py-2 px-4 rounded hover:bg-blue-500 mt-2"
               onClick={clearLocalStorage}
             >
-              Clear_test
+              Clear Test
             </button>
           </div>
         )}
@@ -589,7 +637,7 @@ const App = () => {
               className="bg-blue-400 text-white py-2 px-4 rounded hover:bg-blue-500 mt-2"
               onClick={clearLocalStorage}
             >
-              Clear_test
+              Clear Test
             </button>
           </div>
         )}
