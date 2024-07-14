@@ -4,7 +4,7 @@ import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { format } from 'date-fns';
 
-const Quiz = () => {
+const App = () => {
   const [wordPairs, setWordPairs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchWord, setSearchWord] = useState('');
@@ -23,8 +23,18 @@ const Quiz = () => {
   const [wordInputs, setWordInputs] = useState([{ word: '', synonyms: '' }]);
   const [bulkWords, setBulkWords] = useState('');
   const [typingText, setTypingText] = useState('');
+  const [quizActive, setQuizActive] = useState(false);
+  const [numberOfAttempts, setNumberOfAttempts] = useState('');
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [currentQuestions, setCurrentQuestions] = useState([]);
+  const [options, setOptions] = useState([]);
+  const [userAnswer, setUserAnswer] = useState('');
+  const [correctAnswers, setCorrectAnswers] = useState(0);
+  const [incorrectQuestions, setIncorrectQuestions] = useState([]);
+  const [showFeedbackPopup, setShowFeedbackPopup] = useState(false);
+  const [feedbackMessage, setFeedbackMessage] = useState('');
 
-  const message = "vocabulary refined daily according to insights from 'The Hindu' editorials.";
+  const message = "Vocabulary refined daily according to insights from 'The Hindu' editorials.";
 
   useEffect(() => {
     let index = 0;
@@ -39,6 +49,14 @@ const Quiz = () => {
     return () => clearInterval(interval);
   }, []);
 
+  // Initialize word pairs from localStorage
+  useEffect(() => {
+    const savedWordPairs = localStorage.getItem('wordPairs');
+    if (savedWordPairs) {
+      setWordPairs(JSON.parse(savedWordPairs));
+    }
+  }, []);
+
   const fetchWordPairs = async () => {
     if (showWordPairs) {
       setShowWordPairs(false);
@@ -48,6 +66,7 @@ const Quiz = () => {
     try {
       const response = await axios.get('https://wordly-backend.onrender.com/words/all', { withCredentials: false });
       setWordPairs(response.data);
+      localStorage.setItem('wordPairs', JSON.stringify(response.data)); // Save to localStorage
       setShowWordPairs(true);
     } catch (error) {
       console.error('Error fetching data:', error.message);
@@ -191,12 +210,117 @@ const Quiz = () => {
     }
   };
 
+  const handleRandomQuizClick = () => {
+    const savedWordPairs = localStorage.getItem('wordPairs');
+    if (savedWordPairs) {
+      setWordPairs(JSON.parse(savedWordPairs));
+      setQuizActive(true);
+      setNumberOfAttempts('');
+      setCurrentQuestions([]);
+    } else {
+      alert('No word pairs found, please press- fetch all word pairs button first before starting the Quiz.');
+    }
+  };
+
+  const startQuiz = () => {
+    setUserAnswer('');
+    setCorrectAnswers(0);
+    setIncorrectQuestions([]);
+    const wordsForQuiz = getRandomWords(wordPairs, numberOfAttempts);
+    if (wordsForQuiz.length < numberOfAttempts) {
+      alert('Not enough words available for quiz');
+      setQuizActive(false);
+      return;
+    }
+    setCurrentQuestionIndex(0);
+    setCurrentQuestions(wordsForQuiz);
+    displayQuestion(wordsForQuiz, 0);
+  };
+
+  const getRandomWords = (words, count) => {
+    const shuffled = [...words].sort(() => 0.5 - Math.random());
+    return shuffled.slice(0, count);
+  };
+
+  const generateOptions = (question) => {
+    if (!question) return [];
+    const correctOption = Object.values(question)[0][0];
+    let allOptions = wordPairs
+      .filter(pair => Object.keys(pair)[0] !== Object.keys(question)[0])
+      .slice(0, 3)
+      .map(pair => {
+        const synonyms = Object.values(pair)[0];
+        return synonyms[Math.floor(Math.random() * synonyms.length)];
+      });
+
+    allOptions.push(correctOption);
+    return allOptions.sort(() => 0.5 - Math.random()); // Shuffle options
+  };
+
+  const handleAnswerSubmit = () => {
+    const question = currentQuestions[currentQuestionIndex];
+    const correctAnswer = Object.values(question)[0][0];
+
+    if (userAnswer === correctAnswer) {
+      setCorrectAnswers(prevCorrectAnswers => prevCorrectAnswers + 1);
+    } else {
+      recordIncorrectAnswer(question, userAnswer, correctAnswer);
+      setFeedbackMessage(`Wrong! Correct answer: ${correctAnswer}`);
+      if (currentQuestionIndex + 1 < numberOfAttempts) {
+        setShowFeedbackPopup(true);
+        setTimeout(() => {
+          setShowFeedbackPopup(false);
+          displayQuestion(currentQuestions, currentQuestionIndex + 1);
+        }, 3000); // Show feedback for 3 seconds
+        return;
+      }
+    }
+
+    if (currentQuestionIndex + 1 < numberOfAttempts) {
+      displayQuestion(currentQuestions, currentQuestionIndex + 1);
+    } else {
+      endQuiz();
+    }
+  };
+
+  const recordIncorrectAnswer = (question, userAnswer, correctAnswer) => {
+    const questionText = `What is the synonym for '${Object.keys(question)[0]}'?`;
+    setIncorrectQuestions(prevIncorrectQuestions => [
+      ...prevIncorrectQuestions,
+      {
+        question: questionText,
+        userAnswer: userAnswer || 'No answer selected',
+        correctAnswer,
+        allSynonyms: Object.values(question)[0]
+      }
+    ]);
+  };
+
+  const displayQuestion = (questions, index) => {
+    const question = questions[index];
+    const options = generateOptions(question);
+    setCurrentQuestionIndex(index);
+    setOptions(options); // Ensure options are set correctly before rendering
+    setUserAnswer('');
+  };
+
+  const endQuiz = () => {
+    setQuizActive(false);
+    alert(`Quiz completed`);
+  };
+
+  const clearLocalStorage = () => {
+    localStorage.clear();
+    window.location.reload();
+  };
+
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col justify-between p-4">
       <div className="max-w-3xl mx-auto bg-white p-6 rounded shadow">
-        <h2 className="text-2xl mb-4 text-center">🙏WORDLY🙏</h2>
-        <p className="my-8 text-center">Note:Vocabulary refined daily according to insights from 'The Hindu' editorials.</p>
-        <p className="mb-4 text-center">Bulletin: Quiz will be available soon...</p>
+      <h2 className="text-4xl mb-4 text-center font-serif font-bold text-red-700">🙏WORDLY🙏</h2>
+        <p className="my-8 text-center">Note: Vocabulary refined daily according to insights from 'The Hindu' editorials and aeon essays.</p>
+        <p className="mb-4 text-center text-red-500">Bulletin: Random Quiz-feature integrated, dated-Quiz will be available soon...</p>
+
         <button
           className={`bg-green-400 text-white py-2 px-4 rounded hover:bg-green-500 ${loading && 'opacity-50'}`}
           onClick={fetchWordPairs}
@@ -274,6 +398,7 @@ const Quiz = () => {
           )}
         </div>
 
+        {/* Add Words Section */}
         <div className="mt-6">
           <p className="text-xl mb-4">Want to add words?</p>
           {!showPasskeyInput && (
@@ -371,6 +496,103 @@ const Quiz = () => {
             </div>
           )}
         </div>
+
+        {/* Quiz Section */}
+        <p className="mt-4 mb-2 text-xl">Want to take a quiz?</p>
+        <button
+          className="bg-green-400 text-white py-2 px-4 rounded hover:bg-green-500"
+          onClick={handleRandomQuizClick}
+        >
+          Random Quiz
+        </button>
+
+        {quizActive && !currentQuestions.length && (
+          <div className="mt-4">
+            <label className="block mb-2">Number of questions:</label>
+            <input
+              type="number"
+              className="border p-2 mb-4"
+              value={numberOfAttempts}
+              onChange={(e) => setNumberOfAttempts(e.target.value)}
+            />
+
+            <button
+              className="bg-blue-400 text-white py-2 px-4 rounded hover:bg-blue-500"
+              onClick={startQuiz}
+            >
+              Start Quiz
+            </button>
+          </div>
+        )}
+
+        {currentQuestions.length > 0 && currentQuestionIndex < numberOfAttempts && (
+          <div className="mt-4">
+            <p className="text-xl mb-4">
+              What is the synonym for '{Object.keys(currentQuestions[currentQuestionIndex])[0]}'?
+            </p>
+            {options.map((option, index) => (
+              <div key={index}>
+                <label>
+                  <input
+                    type="radio"
+                    name="quizOption"
+                    value={option}
+                    checked={userAnswer === option}
+                    onChange={(e) => setUserAnswer(e.target.value)}
+                  />
+                  {option}
+                </label>
+              </div>
+            ))}
+            <button
+              className="bg-red-400 text-white py-2 px-4 rounded hover:bg-red-500 mt-2"
+              onClick={handleAnswerSubmit}
+            >
+              Submit
+            </button>
+          </div>
+        )}
+
+        {showFeedbackPopup && (
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center">
+            <div className="bg-white p-4 rounded shadow-lg">
+              <p>{feedbackMessage}</p>
+            </div>
+          </div>
+        )}
+
+        {!quizActive && incorrectQuestions.length > 0 && (
+          <div className="mt-6">
+            <h3 className="text-xl mb-4">Summary of Incorrect Answers:</h3>
+            {incorrectQuestions.map((question, index) => (
+              <div key={index} className="mb-4">
+                <p><strong>Question {index + 1}:</strong> {question.question}</p>
+                <p><strong>Your answer:</strong> {question.userAnswer}</p>
+                <p><strong>Correct answer:</strong> {question.correctAnswer}</p>
+                <p><strong>All synonyms:</strong> {question.allSynonyms.join(', ')}</p>
+              </div>
+            ))}
+            <p className="text-xl mt-4">You attempted {numberOfAttempts} questions and answered {correctAnswers} correctly.</p>
+            <button
+              className="bg-blue-400 text-white py-2 px-4 rounded hover:bg-blue-500 mt-2"
+              onClick={clearLocalStorage}
+            >
+              Clear_test
+            </button>
+          </div>
+        )}
+
+        {!quizActive && incorrectQuestions.length === 0 && correctAnswers > 0 && (
+          <div className="mt-6">
+            <p className="text-xl mt-4">You attempted {numberOfAttempts} questions and answered all of them correctly🎉🎉.</p>
+            <button
+              className="bg-blue-400 text-white py-2 px-4 rounded hover:bg-blue-500 mt-2"
+              onClick={clearLocalStorage}
+            >
+              Clear_test
+            </button>
+          </div>
+        )}
       </div>
       <footer className="text-center mt-8 py-4">
         Made with ❤️ by Adirohah's Production
@@ -379,4 +601,5 @@ const Quiz = () => {
   );
 };
 
-export default Quiz;
+export default App;
+
