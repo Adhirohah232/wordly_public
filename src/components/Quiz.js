@@ -33,6 +33,8 @@ const App = () => {
   const [incorrectQuestions, setIncorrectQuestions] = useState([]);
   const [showFeedbackPopup, setShowFeedbackPopup] = useState(false);
   const [feedbackMessage, setFeedbackMessage] = useState('');
+  const [quizType, setQuizType] = useState(null); // to switch between random and dated quiz
+  const [dateString, setDateString] = useState(''); // for storing date strings
 
   const message = "Vocabulary refined daily according to insights from 'The Hindu' editorials.";
 
@@ -65,7 +67,7 @@ const App = () => {
     setLoading(true);
     try {
       const response = await axios.get('https://wordly-backend.onrender.com/words/all', { withCredentials: false });
-      setWordPairs(response.data);
+      setWordPairs([...response.data]);
       localStorage.setItem('wordPairs', JSON.stringify(response.data)); // Save to localStorage
       setShowWordPairs(true);
     } catch (error) {
@@ -212,6 +214,7 @@ const App = () => {
 
   const handleRandomQuizClick = async () => {
     setLoading(true);
+    setQuizType('random');
     try {
       const response = await axios.get('https://wordly-backend.onrender.com/words/all', { withCredentials: false });
       setWordPairs(response.data);
@@ -225,6 +228,35 @@ const App = () => {
       setLoading(false);
     }
   };
+
+  const handleDatedQuizClick = async () => {
+    setQuizType('dated');
+    setQuizActive(true);
+    setNumberOfAttempts('');
+    setCurrentQuestions([]);
+  };
+
+  const fetchWordsForQuiz = async () => {
+    setLoading(true);
+    try {
+      const datesArray = dateString.split(',').map(date => date.trim()); // split the string into an array of dates
+      const response = await axios.post('https://wordly-backend.onrender.com/words/all', { dates: datesArray }, { withCredentials: false });
+      
+      const fetchedWords = response.data;
+      const numberOfWordsFetched = Object.keys(fetchedWords).length;
+  
+      setWordPairs(fetchedWords);
+      localStorage.setItem('wordPairs', JSON.stringify(fetchedWords)); // Save to localStorage
+  
+      alert(`Words fetched successfully! Number of words found: ${numberOfWordsFetched}`);
+    } catch (error) {
+      console.error('Error fetching words:', error.message);
+      alert('Failed to fetch words');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
 
   const startQuiz = () => {
     setUserAnswer('');
@@ -365,7 +397,8 @@ const App = () => {
       <div className="max-w-3xl mx-auto bg-white p-6 rounded shadow">
       <h2 className="text-4xl mb-4 text-center font-serif font-bold text-red-700">🙏WORDLY🙏</h2>
         <p className="my-8 text-center">Note: Vocabulary refined daily according to insights from 'The Hindu' editorials and aeon essays.</p>
-        <p className="mb-4 text-center text-red-500">Bulletin: Random Quiz-feature integrated, dated-Quiz will be available soon...</p>
+        <p className="mb-4 text-center font-serif font-bold text-red-700">Bulletin: Dated Quiz feature integrated.</p>
+        <p className="my-8 text-center">~ From Adirohah: Thank you for using my site! If you find it helpful, please consider providing feedback and suggesting any features you think would improve your exam preparation, will do my best to accommodate your needs. </p>
 
         <button
           className={`bg-green-400 text-white py-2 px-4 rounded hover:bg-green-500 ${loading && 'opacity-50'}`}
@@ -452,7 +485,7 @@ const App = () => {
               className="bg-green-400 text-white py-2 px-4 rounded hover:bg-green-500"
               onClick={handleAddWordsButtonClick}
             >
-              Add Words
+                         Add Words
             </button>
           )}
           {showPasskeyInput && (
@@ -546,11 +579,37 @@ const App = () => {
         {/* Quiz Section */}
         <p className="mt-4 mb-2 text-xl">Want to take a quiz?</p>
         <button
-          className="bg-green-400 text-white py-2 px-4 rounded hover:bg-green-500"
+          className="bg-green-400 text-white py-2 px-4 rounded hover:bg-green-700"
           onClick={handleRandomQuizClick}
         >
           Random Quiz
         </button>
+
+        <button
+          className="bg-green-400 text-white py-2 px-4 rounded hover:bg-green-700 ml-2"
+          onClick={handleDatedQuizClick}
+        >
+          Dated Quiz
+        </button>
+
+        {quizActive && quizType === 'dated' && !currentQuestions.length && (
+          <div className="mt-4">
+            <label className="block mb-2">Enter Dates (comma separated. example: 6/7/2024, 8/7/2024):</label>
+            <input
+              type="text"
+              className="border p-2 mb-4 w-full"
+              placeholder="Enter dates"
+              value={dateString}
+              onChange={(e) => setDateString(e.target.value)}
+            />
+            <button
+              className="bg-green-400 text-white py-2 px-4 rounded hover:bg-green-500 ml-2"
+              onClick={fetchWordsForQuiz}
+            >
+              Fetch Words
+            </button>
+          </div>
+        )}
 
         {quizActive && !currentQuestions.length && (
           <div className="mt-4">
@@ -650,4 +709,3 @@ const App = () => {
 };
 
 export default App;
-
