@@ -10,6 +10,7 @@ const App = () => {
   const [searchWord, setSearchWord] = useState('');
   const [searchResult, setSearchResult] = useState(null);
   const [searchError, setSearchError] = useState('');
+  const [sentences, setSentences] = useState([]);
   const [selectedDate, setSelectedDate] = useState(null);
   const [dateWordPairs, setDateWordPairs] = useState({});
   const [dateError, setDateError] = useState('');
@@ -22,6 +23,7 @@ const App = () => {
   const [showPasskeyInput, setShowPasskeyInput] = useState(false);
   const [wordInputs, setWordInputs] = useState([{ word: '', synonyms: '' }]);
   const [bulkWords, setBulkWords] = useState('');
+  const [sentenceInput, setSentenceInput] = useState('');
   const [typingText, setTypingText] = useState('');
   const [quizActive, setQuizActive] = useState(false);
   const [numberOfAttempts, setNumberOfAttempts] = useState('');
@@ -81,10 +83,25 @@ const App = () => {
     setLoading(true);
     setSearchResult(null);
     setSearchError('');
+    setSentences([]);
     try {
-      const response = await axios.get(`https://wordly-backend.onrender.com/words/${searchWord}`, { withCredentials: false });
-      if (response.data && Object.keys(response.data).length > 0) {
-        setSearchResult(response.data);
+      const wordResponse = await axios.get(`https://wordly-backend.onrender.com/words/${searchWord}`, { withCredentials: false });
+      console.log('Word Response:', wordResponse.data);
+
+      const sentenceResponse = await axios.get(`https://wordly-backend.onrender.com/sentence/${searchWord}`, { withCredentials: false });
+      console.log('Sentence Response:', sentenceResponse.data);
+
+      if (wordResponse.data && Object.keys(wordResponse.data).length > 0) {
+        setSearchResult(wordResponse.data);
+
+        // Process sentences response
+        if (Array.isArray(sentenceResponse.data)) {
+          const sentencesArray = sentenceResponse.data.map(item => item.sentence);
+          setSentences(sentencesArray);
+        } else {
+          console.error('Invalid sentence response format:', sentenceResponse.data);
+        }
+
         setShowSearchResult(true);
       } else {
         setSearchError('No words found in the database');
@@ -181,6 +198,10 @@ const App = () => {
     setBulkWords(event.target.value);
   };
 
+  const handleSentenceChange = (event) => {
+    setSentenceInput(event.target.value);
+  };
+
   const handleSubmitBulkWords = async () => {
     if (!selectedDate) {
       alert('Please select a date');
@@ -209,6 +230,19 @@ const App = () => {
     } catch (error) {
       console.error('Error adding words:', error);
       alert('Failed to add words');
+    }
+  };
+
+  const handleSubmitSentence = async () => {
+    const requestBody = { sentence: sentenceInput };
+
+    try {
+      await axios.post('https://wordly-backend.onrender.com/sentence', requestBody, { withCredentials: false });
+      alert('Sentence added successfully');
+      setSentenceInput(''); // Clear the input field after successful submission
+    } catch (error) {
+      console.error('Error adding sentence:', error);
+      alert('Failed to add sentence');
     }
   };
 
@@ -398,6 +432,8 @@ const App = () => {
       <h2 className="text-4xl mb-4 text-center font-serif font-bold text-red-700">🙏WORDLY🙏</h2>
         <p className="my-8 text-center">Note: Vocabulary refined daily according to insights from 'The Hindu' editorials and aeon essays.</p>
         <p className="mb-4 text-center font-serif font-bold text-red-700">Bulletin: Dated Quiz feature integrated.</p>
+        <p className="mb-4 text-center font-serif font-bold text-red-700">Search for a word present in db to find sentences associated with it.</p>
+
         <p className="my-8 text-center">~ From Adirohah: Thank you for using my site! If you find it helpful, please consider providing feedback and suggesting any features you think would improve your exam preparation, will do my best to accommodate your needs. </p>
 
         <button
@@ -436,17 +472,91 @@ const App = () => {
           {showSearchResult && searchResult && (
             <div className="mt-4">
               <strong>{Object.keys(searchResult)[0]}:</strong> {Object.values(searchResult)[0].join(', ')}
-            </div>
-          )}
-          {searchError && (
-            <div className="mt-4 text-red-500">
-              {searchError}
-            </div>
-          )}
-        </div>
+              <h4 className="mt-4 font-bold text-green-800">Sentences:</h4>
+              <ul>
+              {sentences.length > 0 ? (
+  sentences.map((sentence, index) => (
+    <li key={index} className="mb-2">{sentence}</li>
+  ))
+) : (
+  <p className="mt-2 text-gray-500">No sentences found</p>
+)}
+</ul>
+</div>
+)}
+{searchError && (
+<div className="mt-4 text-red-500">
+  {searchError}
+</div>
+)}
+</div>
 
-        <div className="mt-6">
-          <h3 className="text-xl mb-4">Search Words by Date</h3>
+<div className="mt-6">
+<h3 className="text-xl mb-4">Search Words by Date</h3>
+<DatePicker
+  selected={selectedDate}
+  onChange={(date) => setSelectedDate(date)}
+  dateFormat="dd/MM/yyyy"
+  className="border p-2 mr-2"
+  placeholderText="Select a date"
+/>
+<button
+  className={`bg-green-400 text-white py-2 px-4 rounded hover:bg-green-500 ${loading || !selectedDate && 'opacity-50'}`}
+  onClick={() => fetchWordsByDate(selectedDate)}
+  disabled={loading || !selectedDate}
+>
+  {loading ? 'Loading...' : showDateWordPairs ? 'Hide Date Word Pairs' : 'Search by Date'}
+</button>
+{showDateWordPairs && (
+  <ul className="mt-4">
+    {Object.entries(dateWordPairs).map(([word, synonyms], index) => (
+      <li key={index} className="mb-2">
+        <strong>{word}:</strong> {synonyms.join(', ')}
+      </li>
+    ))}
+  </ul>
+)}
+{dateError && (
+  <div className="mt-4 text-red-500">
+    {dateError}
+  </div>
+)}
+</div>
+
+{/* Add Words Section */}
+<div className="mt-6">
+<p className="text-xl mb-4">Want to add words?</p>
+{!showPasskeyInput && (
+  <button
+    className="bg-green-400 text-white py-2 px-4 rounded hover:bg-green-500"
+    onClick={handleAddWordsButtonClick}
+  >
+    Add Words
+  </button>
+)}
+{showPasskeyInput && (
+  <div>
+    <input
+      type="password"
+      className="border p-2 mr-2"
+      placeholder="Enter passkey"
+      value={passkey}
+      onChange={(e) => setPasskey(e.target.value)}
+    />
+    <button
+      className="bg-green-400 text-white py-2 px-4 rounded hover:bg-green-500"
+      onClick={handlePasskeySubmit}
+    >
+      Submit Passkey
+    </button>
+    {passkeyError && (
+      <div className="mt-4 text-red-500">
+        {passkeyError}
+      </div>
+    )}
+    {canAddWords && (
+      <>
+        <div className="mt-4">
           <DatePicker
             selected={selectedDate}
             onChange={(date) => setSelectedDate(date)}
@@ -454,258 +564,211 @@ const App = () => {
             className="border p-2 mr-2"
             placeholderText="Select a date"
           />
-          <button
-            className={`bg-green-400 text-white py-2 px-4 rounded hover:bg-green-500 ${loading || !selectedDate && 'opacity-50'}`}
-            onClick={() => fetchWordsByDate(selectedDate)}
-            disabled={loading || !selectedDate}
-          >
-            {loading ? 'Loading...' : showDateWordPairs ? 'Hide Date Word Pairs' : 'Search by Date'}
-          </button>
-          {showDateWordPairs && (
-            <ul className="mt-4">
-              {Object.entries(dateWordPairs).map(([word, synonyms], index) => (
-                <li key={index} className="mb-2">
-                  <strong>{word}:</strong> {synonyms.join(', ')}
-                </li>
-              ))}
-            </ul>
-          )}
-          {dateError && (
-            <div className="mt-4 text-red-500">
-              {dateError}
-            </div>
-          )}
         </div>
-
-        {/* Add Words Section */}
-        <div className="mt-6">
-          <p className="text-xl mb-4">Want to add words?</p>
-          {!showPasskeyInput && (
-            <button
-              className="bg-green-400 text-white py-2 px-4 rounded hover:bg-green-500"
-              onClick={handleAddWordsButtonClick}
-            >
-                         Add Words
-            </button>
-          )}
-          {showPasskeyInput && (
-            <div>
-              <input
-                type="password"
-                className="border p-2 mr-2"
-                placeholder="Enter passkey"
-                value={passkey}
-                onChange={(e) => setPasskey(e.target.value)}
-              />
-              <button
-                className="bg-green-400 text-white py-2 px-4 rounded hover:bg-green-500"
-                onClick={handlePasskeySubmit}
-              >
-                Submit Passkey
-              </button>
-              {passkeyError && (
-                <div className="mt-4 text-red-500">
-                  {passkeyError}
-                </div>
-              )}
-              {canAddWords && (
-                <>
-                  <div className="mt-4">
-                    <DatePicker
-                      selected={selectedDate}
-                      onChange={(date) => setSelectedDate(date)}
-                      dateFormat="dd/MM/yyyy"
-                      className="border p-2 mr-2"
-                      placeholderText="Select a date"
-                    />
-                  </div>
-                  {wordInputs.map((input, index) => (
-                    <div key={index} className="mt-2">
-                      <input
-                        type="text"
-                        name="word"
-                        className="border p-2 mr-2"
-                        placeholder="Enter word"
-                        value={input.word}
-                        onChange={(event) => handleWordChange(index, event)}
-                      />
-                      <input
-                        type="text"
-                        name="synonyms"
-                        className="border p-2 mr-2"
-                        placeholder="Enter synonyms (comma separated)"
-                        value={input.synonyms}
-                        onChange={(event) => handleWordChange(index, event)}
-                      />
-                      {index === wordInputs.length - 1 && (
-                        <>
-                          <button
-                            className="bg-green-400 text-white py-2 px-4 rounded hover:bg-green-500 mr-2"
-                            onClick={handleSubmitWords}
-                          >
-                            Add Words
-                          </button>
-                          <button
-                            className="bg-green-400 text-white py-2 px-4 rounded hover:bg-green-500"
-                            onClick={handleAddWordInput}
-                          >
-                            +
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  ))}
-                  <div className="mt-4">
-                    <textarea
-                      className="border p-2 w-full"
-                      rows="6"
-                      placeholder="Enter words and synonyms in bulk. Format: Word: synonym1, synonym2, ..."
-                      value={bulkWords}
-                      onChange={handleBulkWordsChange}
-                    />
-                    <button
-                      className="bg-green-400 text-white py-2 px-4 rounded hover:bg-green-500 mt-2"
-                      onClick={handleSubmitBulkWords}
-                    >
-                      Add Bulk Words
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Quiz Section */}
-        <p className="mt-4 mb-2 text-xl">Want to take a quiz?</p>
-        <button
-          className="bg-green-400 text-white py-2 px-4 rounded hover:bg-green-700"
-          onClick={handleRandomQuizClick}
-        >
-          Random Quiz
-        </button>
-
-        <button
-          className="bg-green-400 text-white py-2 px-4 rounded hover:bg-green-700 ml-2"
-          onClick={handleDatedQuizClick}
-        >
-          Dated Quiz
-        </button>
-
-        {quizActive && quizType === 'dated' && !currentQuestions.length && (
-          <div className="mt-4">
-            <label className="block mb-2">Enter Dates (comma separated. example: 6/7/2024, 8/7/2024):</label>
+        {wordInputs.map((input, index) => (
+          <div key={index} className="mt-2">
             <input
               type="text"
-              className="border p-2 mb-4 w-full"
-              placeholder="Enter dates"
-              value={dateString}
-              onChange={(e) => setDateString(e.target.value)}
+              name="word"
+              className="border p-2 mr-2"
+              placeholder="Enter word"
+              value={input.word}
+              onChange={(event) => handleWordChange(index, event)}
             />
-            <button
-              className="bg-green-400 text-white py-2 px-4 rounded hover:bg-green-500 ml-2"
-              onClick={fetchWordsForQuiz}
-            >
-              Fetch Words
-            </button>
-          </div>
-        )}
-
-        {quizActive && !currentQuestions.length && (
-          <div className="mt-4">
-            <label className="block mb-2">Number of questions:</label>
             <input
-              type="number"
-              className="border p-2 mb-4"
-              value={numberOfAttempts}
-              onChange={(e) => setNumberOfAttempts(e.target.value)}
+              type="text"
+              name="synonyms"
+              className="border p-2 mr-2"
+              placeholder="Enter synonyms (comma separated)"
+              value={input.synonyms}
+              onChange={(event) => handleWordChange(index, event)}
             />
-
-            <button
-              className="bg-blue-400 text-white py-2 px-4 rounded hover:bg-blue-500"
-              onClick={startQuiz}
-            >
-              Start Quiz
-            </button>
+            {index === wordInputs.length - 1 && (
+              <>
+                <button
+                  className="bg-green-400 text-white py-2 px-4 rounded hover:bg-green-500 mr-2"
+                  onClick={handleSubmitWords}
+                >
+                  Add Words
+                </button>
+                <button
+                  className="bg-green-400 text-white py-2 px-4 rounded hover:bg-green-500"
+                  onClick={handleAddWordInput}
+                >
+                  +
+                </button>
+              </>
+            )}
           </div>
-        )}
+        ))}
+        <div className="mt-4">
+          <textarea
+            className="border p-2 w-full"
+            rows="6"
+            placeholder="Enter words and synonyms in bulk. Format: Word: synonym1, synonym2, ..."
+            value={bulkWords}
+            onChange={handleBulkWordsChange}
+          />
+          <button
+            className="bg-green-400 text-white py-2 px-4 rounded hover:bg-green-500 mt-2"
+            onClick={handleSubmitBulkWords}
+          >
+            Add Bulk Words
+          </button>
+        </div>
+        <div className="mt-4">
+          <textarea
+            className="border p-2 w-full"
+            rows="4"
+            placeholder="Enter a sentence"
+            value={sentenceInput}
+            onChange={handleSentenceChange}
+          />
+          <button
+            className="bg-green-400 text-white py-2 px-4 rounded hover:bg-green-500 mt-2"
+            onClick={handleSubmitSentence}
+          >
+            Add Sentence
+          </button>
+        </div>
+      </>
+    )}
+  </div>
+)}
+</div>
 
-        {currentQuestions.length > 0 && currentQuestionIndex < numberOfAttempts && (
-          <div className="mt-4">
-            <p className="text-xl mb-4">
-              {currentQuestions[currentQuestionIndex].isSynonymQuestion
-                ? `What word matches the synonym '${currentQuestions[currentQuestionIndex].question}'?`
-                : `What is the synonym for '${currentQuestions[currentQuestionIndex].question}'?`}
-            </p>
-            {options.map((option, index) => (
-              <div key={index}>
-                <label>
-                  <input
-                    type="radio"
-                    name="quizOption"
-                    value={option}
-                    checked={userAnswer === option}
-                    onChange={(e) => setUserAnswer(e.target.value)}
-                  />
-                  {option}
-                </label>
-              </div>
-            ))}
-            <button
-              className="bg-red-400 text-white py-2 px-4 rounded hover:bg-red-500 mt-2"
-              onClick={handleAnswerSubmit}
-            >
-              Submit
-            </button>
-          </div>
-        )}
+{/* Quiz Section */}
+<p className="mt-4 mb-2 text-xl">Want to take a quiz?</p>
+<button
+  className="bg-green-400 text-white py-2 px-4 rounded hover:bg-green-700"
+  onClick={handleRandomQuizClick}
+>
+  Random Quiz
+</button>
 
-        {showFeedbackPopup && (
-          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center">
-            <div className="bg-white p-4 rounded shadow-lg">
-              <p>{feedbackMessage}</p>
-            </div>
-          </div>
-        )}
+<button
+  className="bg-green-400 text-white py-2 px-4 rounded hover:bg-green-700 ml-2"
+  onClick={handleDatedQuizClick}
+>
+  Dated Quiz
+</button>
 
-        {!quizActive && incorrectQuestions.length > 0 && (
-          <div className="mt-6">
-            <h3 className="text-xl mb-4">Summary of Incorrect Answers:</h3>
-            {incorrectQuestions.map((question, index) => (
-              <div key={index} className="mb-4">
-                <p><strong>Question {index + 1}:</strong> {question.question}</p>
-                <p><strong>Your answer:</strong> {question.userAnswer}</p>
-                <p><strong>Correct answer:</strong> {question.correctAnswer}</p>
-                <p><strong>All synonyms:</strong> {question.allSynonyms.join(', ')}</p>
-              </div>
-            ))}
-            <p className="text-xl mt-4">You attempted {numberOfAttempts} questions and answered {correctAnswers} correctly.</p>
-            <button
-              className="bg-blue-400 text-white py-2 px-4 rounded hover:bg-blue-500 mt-2"
-              onClick={clearLocalStorage}
-            >
-              Clear Test
-            </button>
-          </div>
-        )}
+{quizActive && quizType === 'dated' && !currentQuestions.length && (
+  <div className="mt-4">
+    <label className="block mb-2">Enter Dates (comma separated. example: 6/7/2024, 8/7/2024):</label>
+    <input
+      type="text"
+      className="border p-2 mb-4 w-full"
+      placeholder="Enter dates"
+      value={dateString}
+      onChange={(e) => setDateString(e.target.value)}
+    />
+    <button
+      className="bg-green-400 text-white py-2 px-4 rounded hover:bg-green-500 ml-2"
+      onClick={fetchWordsForQuiz}
+    >
+      Fetch Words
+    </button>
+  </div>
+)}
 
-        {!quizActive && incorrectQuestions.length === 0 && correctAnswers > 0 && (
-          <div className="mt-6">
-            <p className="text-xl mt-4">You attempted {numberOfAttempts} questions and answered all of them correctly🎉🎉.</p>
-            <button
-              className="bg-blue-400 text-white py-2 px-4 rounded hover:bg-blue-500 mt-2"
-              onClick={clearLocalStorage}
-            >
-              Clear Test
-            </button>
-          </div>
-        )}
+{quizActive && !currentQuestions.length && (
+  <div className="mt-4">
+    <label className="block mb-2">Number of questions:</label>
+    <input
+      type="number"
+      className="border p-2 mb-4"
+      value={numberOfAttempts}
+      onChange={(e) => setNumberOfAttempts(e.target.value)}
+    />
+
+    <button
+      className="bg-blue-400 text-white py-2 px-4 rounded hover:bg-blue-500"
+      onClick={startQuiz}
+    >
+      Start Quiz
+    </button>
+  </div>
+)}
+
+{currentQuestions.length > 0 && currentQuestionIndex < numberOfAttempts && (
+  <div className="mt-4">
+    <p className="text-xl mb-4">
+      {currentQuestions[currentQuestionIndex].isSynonymQuestion
+        ? `What word matches the synonym '${currentQuestions[currentQuestionIndex].question}'?`
+        : `What is the synonym for '${currentQuestions[currentQuestionIndex].question}'?`}
+    </p>
+    {options.map((option, index) => (
+      <div key={index}>
+        <label>
+          <input
+            type="radio"
+            name="quizOption"
+            value={option}
+            checked={userAnswer === option}
+            onChange={(e) => setUserAnswer(e.target.value)}
+          />
+          {option}
+        </label>
       </div>
-      <footer className="text-center mt-8 py-4">
-        Made with ❤️ by Adirohah's Production
-      </footer>
+    ))}
+    <button
+      className="bg-red-400 text-white py-2 px-4 rounded hover:bg-red-500 mt-2"
+      onClick={handleAnswerSubmit}
+    >
+      Submit
+    </button>
+  </div>
+)}
+
+{showFeedbackPopup && (
+  <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center">
+    <div className="bg-white p-4 rounded shadow-lg">
+      <p>{feedbackMessage}</p>
     </div>
-  );
+  </div>
+)}
+
+{!quizActive && incorrectQuestions.length > 0 && (
+  <div className="mt-6">
+    <h3 className="text-xl mb-4">Summary of Incorrect Answers:</h3>
+    {incorrectQuestions.map((question, index) => (
+      <div key={index} className="mb-4">
+        <p><strong>Question {index + 1}:</strong> {question.question}</p>
+        <p><strong>Your answer:</strong> {question.userAnswer}</p>
+        <p><strong>Correct answer:</strong> {question.correctAnswer}</p>
+        <p><strong>All synonyms:</strong> {question.allSynonyms.join(', ')}</p>
+      </div>
+    ))}
+    <p className="text-xl mt-4">You attempted {numberOfAttempts} questions and answered {correctAnswers} correctly.</p>
+    <button
+      className="bg-blue-400 text-white py-2 px-4 rounded hover:bg-blue-500 mt-2"
+      onClick={clearLocalStorage}
+    >
+      Clear Test
+    </button>
+  </div>
+)}
+
+{!quizActive && incorrectQuestions.length === 0 && correctAnswers > 0 && (
+  <div className="mt-6">
+    <p className="text-xl mt-4">You attempted {numberOfAttempts} questions and answered all of them correctly🎉🎉.</p>
+    <button
+      className="bg-blue-400 text-white py-2 px-4 rounded hover:bg-blue-500 mt-2"
+      onClick={clearLocalStorage}
+    >
+      Clear Test
+    </button>
+  </div>
+)}
+</div>
+<footer className="text-center mt-8 py-4">
+  Made with ❤️ by Adirohah's Production
+</footer>
+</div>
+);
 };
 
 export default App;
+
+
