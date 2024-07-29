@@ -482,7 +482,7 @@ const App = () => {
   {loading ? 'Searching...' : 'Search Word'}
 </button>
 <button
-  className={`bg-blue-400 text-white py-2 px-4 rounded hover:bg-blue-500 ml-2 ${loading && 'opacity-50'}`}
+  className={`bg-green-400 text-white py-2 px-4 rounded hover:bg-green-500 ${loading && 'opacity-50'}`}
   onClick={searchWordSentences}
   disabled={loading}
 >
