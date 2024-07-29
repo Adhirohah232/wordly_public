@@ -16,6 +16,7 @@ const App = () => {
   const [dateError, setDateError] = useState('');
   const [showWordPairs, setShowWordPairs] = useState(false);
   const [showSearchResult, setShowSearchResult] = useState(false);
+  const [showSentenceResult, setShowSentenceResult] = useState(false);
   const [showDateWordPairs, setShowDateWordPairs] = useState(false);
   const [passkey, setPasskey] = useState('');
   const [passkeyError, setPasskeyError] = useState('');
@@ -83,25 +84,12 @@ const App = () => {
     setLoading(true);
     setSearchResult(null);
     setSearchError('');
-    setSentences([]);
     try {
       const wordResponse = await axios.get(`https://wordly-backend.onrender.com/words/${searchWord}`, { withCredentials: false });
       console.log('Word Response:', wordResponse.data);
 
-      const sentenceResponse = await axios.get(`https://wordly-backend.onrender.com/sentence/${searchWord}`, { withCredentials: false });
-      console.log('Sentence Response:', sentenceResponse.data);
-
       if (wordResponse.data && Object.keys(wordResponse.data).length > 0) {
         setSearchResult(wordResponse.data);
-
-        // Process sentences response
-        if (Array.isArray(sentenceResponse.data)) {
-          const sentencesArray = sentenceResponse.data.map(item => item.sentence);
-          setSentences(sentencesArray);
-        } else {
-          console.error('Invalid sentence response format:', sentenceResponse.data);
-        }
-
         setShowSearchResult(true);
       } else {
         setSearchError('No words found in the database');
@@ -109,6 +97,30 @@ const App = () => {
     } catch (error) {
       console.error('Error fetching data:', error.message);
       setSearchError('No words found in the database');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const searchWordSentences = async () => {
+    setLoading(true);
+    setSentences([]);
+    try {
+      const sentenceResponse = await axios.get(`https://wordly-backend.onrender.com/sentence/${searchWord}`, { withCredentials: false });
+      console.log('Sentence Response:', sentenceResponse.data);
+
+      // Process sentences response
+      if (Array.isArray(sentenceResponse.data)) {
+        const sentencesArray = sentenceResponse.data.map(item => item.sentence);
+        setSentences(sentencesArray);
+      } else {
+        console.error('Invalid sentence response format:', sentenceResponse.data);
+      }
+
+      setShowSentenceResult(true);
+    } catch (error) {
+      console.error('Error fetching data:', error.message);
+      setSearchError('No sentences found in the database');
     } finally {
       setLoading(false);
     }
@@ -462,179 +474,195 @@ const App = () => {
             value={searchWord}
             onChange={(e) => setSearchWord(e.target.value)}
           />
-          <button
-            className={`bg-green-400 text-white py-2 px-4 rounded hover:bg-green-500 ${loading && 'opacity-50'}`}
-            onClick={searchWordPair}
-            disabled={loading}
-          >
-            {loading ? 'Searching...' : 'Search'}
-          </button>
-          {showSearchResult && searchResult && (
-            <div className="mt-4">
-              <strong>{Object.keys(searchResult)[0]}:</strong> {Object.values(searchResult)[0].join(', ')}
-              <h4 className="mt-4 font-bold text-green-800">Sentences:</h4>
-              <ul>
-              {sentences.length > 0 ? (
-  sentences.map((sentence, index) => (
-    <li key={index} className="mb-2">{sentence}</li>
-  ))
-) : (
-  <p className="mt-2 text-gray-500">No sentences found</p>
-)}
-</ul>
-</div>
+        <button
+  className={`bg-green-400 text-white py-2 px-4 rounded hover:bg-green-500 ${loading && 'opacity-50'}`}
+  onClick={searchWordPair}
+  disabled={loading}
+>
+  {loading ? 'Searching...' : 'Search Word'}
+</button>
+<button
+  className={`bg-blue-400 text-white py-2 px-4 rounded hover:bg-blue-500 ml-2 ${loading && 'opacity-50'}`}
+  onClick={searchWordSentences}
+  disabled={loading}
+>
+  {loading ? 'Searching...' : 'Search Sentences'}
+</button>
+{showSearchResult && searchResult && (
+  <div className="mt-4">
+    <strong>{Object.keys(searchResult)[0]}:</strong> {Object.values(searchResult)[0].join(', ')}
+  </div>
 )}
 {searchError && (
-<div className="mt-4 text-red-500">
-  {searchError}
-</div>
+  <div className="mt-4 text-red-500">
+    {searchError}
+  </div>
+)}
+{showSentenceResult && (
+  <div className="mt-4">
+    <h4 className="mt-4 font-bold text-green-800">Sentences:</h4>
+    <ul>
+      {sentences.length > 0 ? (
+        sentences.map((sentence, index) => (
+          <li key={index} className="mb-2">{sentence}</li>
+        ))
+      ) : (
+        <p className="mt-2 text-gray-500">No sentences found</p>
+      )}
+    </ul>
+  </div>
+)}
+{searchError && (
+  <div className="mt-4 text-red-500">
+    {searchError}
+  </div>
 )}
 </div>
 
 <div className="mt-6">
-<h3 className="text-xl mb-4">Search Words by Date</h3>
-<DatePicker
-  selected={selectedDate}
-  onChange={(date) => setSelectedDate(date)}
-  dateFormat="dd/MM/yyyy"
-  className="border p-2 mr-2"
-  placeholderText="Select a date"
-/>
-<button
-  className={`bg-green-400 text-white py-2 px-4 rounded hover:bg-green-500 ${loading || !selectedDate && 'opacity-50'}`}
-  onClick={() => fetchWordsByDate(selectedDate)}
-  disabled={loading || !selectedDate}
->
-  {loading ? 'Loading...' : showDateWordPairs ? 'Hide Date Word Pairs' : 'Search by Date'}
-</button>
-{showDateWordPairs && (
-  <ul className="mt-4">
-    {Object.entries(dateWordPairs).map(([word, synonyms], index) => (
-      <li key={index} className="mb-2">
-        <strong>{word}:</strong> {synonyms.join(', ')}
-      </li>
-    ))}
-  </ul>
-)}
-{dateError && (
-  <div className="mt-4 text-red-500">
-    {dateError}
-  </div>
-)}
+  <h3 className="text-xl mb-4">Search Words by Date</h3>
+  <DatePicker
+    selected={selectedDate}
+    onChange={(date) => setSelectedDate(date)}
+    dateFormat="dd/MM/yyyy"
+    className="border p-2 mr-2"
+    placeholderText="Select a date"
+  />
+  <button
+    className={`bg-green-400 text-white py-2 px-4 rounded hover:bg-green-500 ${loading || (!selectedDate && 'opacity-50')}`}
+    onClick={() => fetchWordsByDate(selectedDate)}
+    disabled={loading || !selectedDate}
+  >
+    {loading ? 'Loading...' : showDateWordPairs ? 'Hide Date Word Pairs' : 'Search by Date'}
+  </button>
+  {showDateWordPairs && (
+    <ul className="mt-4">
+      {Object.entries(dateWordPairs).map(([word, synonyms], index) => (
+        <li key={index} className="mb-2">
+          <strong>{word}:</strong> {synonyms.join(', ')}
+        </li>
+      ))}
+    </ul>
+  )}
+  {dateError && (
+    <div className="mt-4 text-red-500">
+      {dateError}
+    </div>
+  )}
 </div>
 
 {/* Add Words Section */}
 <div className="mt-6">
-<p className="text-xl mb-4">Want to add words?</p>
-{!showPasskeyInput && (
-  <button
-    className="bg-green-400 text-white py-2 px-4 rounded hover:bg-green-500"
-    onClick={handleAddWordsButtonClick}
-  >
-    Add Words
-  </button>
-)}
-{showPasskeyInput && (
-  <div>
-    <input
-      type="password"
-      className="border p-2 mr-2"
-      placeholder="Enter passkey"
-      value={passkey}
-      onChange={(e) => setPasskey(e.target.value)}
-    />
+  <p className="text-xl mb-4">Want to add words?</p>
+  {!showPasskeyInput && (
     <button
       className="bg-green-400 text-white py-2 px-4 rounded hover:bg-green-500"
-      onClick={handlePasskeySubmit}
+      onClick={handleAddWordsButtonClick}
     >
-      Submit Passkey
+      Add Words
     </button>
-    {passkeyError && (
-      <div className="mt-4 text-red-500">
-        {passkeyError}
-      </div>
-    )}
-    {canAddWords && (
-      <>
-        <div className="mt-4">
-          <DatePicker
-            selected={selectedDate}
-            onChange={(date) => setSelectedDate(date)}
-            dateFormat="dd/MM/yyyy"
-            className="border p-2 mr-2"
-            placeholderText="Select a date"
-          />
+  )}
+  {showPasskeyInput && (
+    <div>
+      <input
+        type="password"
+        className="border p-2 mr-2"
+        placeholder="Enter passkey"
+        value={passkey}
+        onChange={(e) => setPasskey(e.target.value)}
+      />
+      <button
+        className="bg-green-400 text-white py-2 px-4 rounded hover:bg-green-500"
+        onClick={handlePasskeySubmit}
+      >
+        Submit Passkey
+      </button>
+      {passkeyError && (
+        <div className="mt-4 text-red-500">
+          {passkeyError}
         </div>
-        {wordInputs.map((input, index) => (
-          <div key={index} className="mt-2">
-            <input
-              type="text"
-              name="word"
+      )}
+      {canAddWords && (
+        <>
+          <div className="mt-4">
+            <DatePicker
+              selected={selectedDate}
+              onChange={(date) => setSelectedDate(date)}
+              dateFormat="dd/MM/yyyy"
               className="border p-2 mr-2"
-              placeholder="Enter word"
-              value={input.word}
-              onChange={(event) => handleWordChange(index, event)}
+              placeholderText="Select a date"
             />
-            <input
-              type="text"
-              name="synonyms"
-              className="border p-2 mr-2"
-              placeholder="Enter synonyms (comma separated)"
-              value={input.synonyms}
-              onChange={(event) => handleWordChange(index, event)}
-            />
-            {index === wordInputs.length - 1 && (
-              <>
-                <button
-                  className="bg-green-400 text-white py-2 px-4 rounded hover:bg-green-500 mr-2"
-                  onClick={handleSubmitWords}
-                >
-                  Add Words
-                </button>
-                <button
-                  className="bg-green-400 text-white py-2 px-4 rounded hover:bg-green-500"
-                  onClick={handleAddWordInput}
-                >
-                  +
-                </button>
-              </>
-            )}
           </div>
-        ))}
-        <div className="mt-4">
-          <textarea
-            className="border p-2 w-full"
-            rows="6"
-            placeholder="Enter words and synonyms in bulk. Format: Word: synonym1, synonym2, ..."
-            value={bulkWords}
-            onChange={handleBulkWordsChange}
-          />
-          <button
-            className="bg-green-400 text-white py-2 px-4 rounded hover:bg-green-500 mt-2"
-            onClick={handleSubmitBulkWords}
-          >
-            Add Bulk Words
-          </button>
-        </div>
-        <div className="mt-4">
-          <textarea
-            className="border p-2 w-full"
-            rows="4"
-            placeholder="Enter a sentence"
-            value={sentenceInput}
-            onChange={handleSentenceChange}
-          />
-          <button
-            className="bg-green-400 text-white py-2 px-4 rounded hover:bg-green-500 mt-2"
-            onClick={handleSubmitSentence}
-          >
-            Add Sentence
-          </button>
-        </div>
-      </>
-    )}
-  </div>
-)}
+          {wordInputs.map((input, index) => (
+            <div key={index} className="mt-2">
+              <input
+                type="text"
+                name="word"
+                className="border p-2 mr-2"
+                placeholder="Enter word"
+                value={input.word}
+                onChange={(event) => handleWordChange(index, event)}
+              />
+              <input
+                type="text"
+                name="synonyms"
+                className="border p-2 mr-2"
+                placeholder="Enter synonyms (comma separated)"
+                value={input.synonyms}
+                onChange={(event) => handleWordChange(index, event)}
+              />
+              {index === wordInputs.length - 1 && (
+                <>
+                  <button
+                    className="bg-green-400 text-white py-2 px-4 rounded hover:bg-green-500 mr-2"
+                    onClick={handleSubmitWords}
+                  >
+                    Add Words
+                  </button>
+                  <button
+                    className="bg-green-400 text-white py-2 px-4 rounded hover:bg-green-500"
+                    onClick={handleAddWordInput}
+                  >
+                    +
+                  </button>
+                </>
+              )}
+            </div>
+          ))}
+          <div className="mt-4">
+            <textarea
+              className="border p-2 w-full"
+              rows="6"
+              placeholder="Enter words and synonyms in bulk. Format: Word: synonym1, synonym2, ..."
+              value={bulkWords}
+              onChange={handleBulkWordsChange}
+            />
+            <button
+              className="bg-green-400 text-white py-2 px-4 rounded hover:bg-green-500 mt-2"
+              onClick={handleSubmitBulkWords}
+            >
+              Add Bulk Words
+            </button>
+          </div>
+          <div className="mt-4">
+            <textarea
+              className="border p-2 w-full"
+              rows="4"
+              placeholder="Enter a sentence"
+              value={sentenceInput}
+              onChange={handleSentenceChange}
+            />
+            <button
+              className="bg-green-400 text-white py-2 px-4 rounded hover:bg-green-500 mt-2"
+              onClick={handleSubmitSentence}
+            >
+              Add Sentence
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  )}
 </div>
 
 {/* Quiz Section */}
@@ -761,14 +789,14 @@ const App = () => {
     </button>
   </div>
 )}
-</div>
+
 <footer className="text-center mt-8 py-4">
   Made with ❤️ by Adirohah's Production
 </footer>
+</div>
 </div>
 );
 };
 
 export default App;
-
 
