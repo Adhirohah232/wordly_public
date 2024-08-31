@@ -438,15 +438,19 @@ const App = () => {
     window.location.reload();
   };
 
+
+
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col justify-between p-4">
-      <div className="max-w-3xl mx-auto bg-white p-6 rounded shadow">
+    <div className="min-h-screen bg-gray-100 flex flex-col justify-between p-4 relative">
+      <div className="overlay"></div>
+      
+      <div className="max-w-3xl mx-auto bg-white p-6 rounded shadow relative z-10">
       <h2 className="text-4xl mb-4 text-center font-serif font-bold text-red-700">🙏WORDLY🙏</h2>
         <p className="my-8 text-center">Note: Vocabulary refined daily according to insights from 'The Hindu' editorials and aeon essays.</p>
         <p className="mb-4 text-center font-serif font-bold text-red-700">Bulletin: Dated Quiz feature integrated.</p>
         <p className="mb-4 text-center font-serif font-bold text-red-700">Search for a word present in db to find sentences associated with it.</p>
 
-        <p className="my-8 text-center">~ From Adirohah: Thank you for using my site! If you find it helpful, please consider providing feedback and suggesting any features you think would improve your exam preparation, will do my best to accommodate your needs. </p>
+        {/* <p className="my-8 text-center">~ From Adirohah: Thank you for using my site! If you find it helpful, please consider providing feedback and suggesting any features you think would improve your exam preparation, will do my best to accommodate your needs. </p> */}
 
         <button
           className={`bg-green-400 text-white py-2 px-4 rounded hover:bg-green-500 ${loading && 'opacity-50'}`}
@@ -791,7 +795,7 @@ const App = () => {
 )}
 
 <footer className="text-center mt-8 py-4">
-  Made with ❤️ by Adirohah's Production
+  Made with ❤️ by Adirohah
 </footer>
 </div>
 </div>
