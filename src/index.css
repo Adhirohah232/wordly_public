@@ -7,7 +7,7 @@ body {
   -moz-osx-font-smoothing: grayscale;
   background-image: url('https://media.istockphoto.com/photos/frame-of-isolated-branch-of-green-leave-on-white-background_-picture-id493386918?b=1&k=20&m=493386918&s=170667a&w=0&h=oqOUXRlhGWaqAxldzCoOOs6EfBEHiAR5sKcWd3xBx9s='); /* Replace with your image URL */
   /* background-size: cover; */
-  /* background-attachment: fixed; */
+  background-attachment: fixed;
   background-position: center;
   background-size:cover;
   background-repeat:inherit;
