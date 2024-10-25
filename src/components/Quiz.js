@@ -483,8 +483,8 @@ const App = () => {
   onClick={searchWordPair}
   disabled={loading}
 >
-  {loading ? 'Searching...' : 'Search Word'} {' '}
-</button>
+  {loading ? 'Searching...' : 'Search Word'}
+</button> {' '}
 <button
   className={`bg-green-400 text-white py-2 px-4 rounded hover:bg-green-500 ${loading && 'opacity-50'}`}
   onClick={searchWordSentences}
