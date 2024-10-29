@@ -590,7 +590,7 @@ const App = () => {
 </div>
 
 <div className="mt-6">
-          <h3 className="text-xl mb-4">Words by Month</h3>
+          <h3 className="text-xl mb-4">Fetch words by Month</h3>
           <DatePicker
             selected={selectedMonth}
             onChange={handleMonthChange}
