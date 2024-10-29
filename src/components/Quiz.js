@@ -438,6 +438,39 @@ const App = () => {
     window.location.reload();
   };
 
+  //functions and variables to get all the words based on months:
+  const [selectedMonth, setSelectedMonth] = useState(null);
+  const [monthlyWords, setMonthlyWords] = useState([]);
+
+  // Initialize word pairs from localStorage
+  useEffect(() => {
+    const savedWordPairs = localStorage.getItem('wordPairs');
+    if (savedWordPairs) {
+      setWordPairs(JSON.parse(savedWordPairs));
+    }
+  }, []);
+
+  const fetchWordsByMonth = async (month) => {
+    setLoading(true);
+    setMonthlyWords([]);
+    try {
+      const formattedMonth = format(month, 'M');
+      const response = await axios.get(`https://wordly-backend.onrender.com/words/month/${formattedMonth}`, {
+        withCredentials: false,
+      });
+      setMonthlyWords(response.data);
+    } catch (error) {
+      console.error('Error fetching data:', error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleMonthChange = (month) => {
+    setSelectedMonth(month);
+    fetchWordsByMonth(month);
+  };
+
 
 
   return (
@@ -446,9 +479,9 @@ const App = () => {
       
       <div className="max-w-3xl mx-auto bg-white p-6 rounded shadow relative z-10">
       <h2 className="text-4xl mb-4 text-center font-serif font-bold text-red-700">🙏WORDLY🙏</h2>
-        <p className="my-8 text-center">Note: Vocabulary refined daily according to insights from 'The Hindu' editorials and aeon essays.</p>
+        <p className="my-8 text-center">Note: Vocabulary refined daily according to insights from 'The Hindu' editorials, PYQs & aeon essays.</p>
         <p className="mb-4 text-center font-serif font-bold text-red-700">Bulletin: Dated Quiz feature integrated.</p>
-        <p className="mb-4 text-center font-serif font-bold text-red-700">Search for a word present in db to find sentences associated with it.</p>
+        <p className="mb-4 text-center font-serif font-bold text-red-700"></p>
 
         {/* <p className="my-8 text-center">~ From Adirohah: Thank you for using my site! If you find it helpful, please consider providing feedback and suggesting any features you think would improve your exam preparation, will do my best to accommodate your needs. </p> */}
 
@@ -484,7 +517,8 @@ const App = () => {
   disabled={loading}
 >
   {loading ? 'Searching...' : 'Search Word'}
-</button> {' '}
+</button>
+{' '}
 <button
   className={`bg-green-400 text-white py-2 px-4 rounded hover:bg-green-500 ${loading && 'opacity-50'}`}
   onClick={searchWordSentences}
@@ -554,6 +588,36 @@ const App = () => {
     </div>
   )}
 </div>
+
+<div className="mt-6">
+          <h3 className="text-xl mb-4">Words by Month</h3>
+          <DatePicker
+            selected={selectedMonth}
+            onChange={handleMonthChange}
+            dateFormat="MMMM yyyy"
+            showMonthYearPicker
+            className={`text-white border p-2 mr-2 text-white bg-green-400 rounded hover:bg-green-500 text-white`}
+            placeholderText="Select a month"
+          />
+          {loading ? (
+            <div className="mt-4">Loading...</div>
+          ) : (
+            <div className="mt-4">
+              {monthlyWords.length > 0 ? (
+                <ul>
+                  {monthlyWords.map((pair, index) => (
+                    <li key={index} className="mb-2">
+                      <strong>{Object.keys(pair)[0]}:</strong> {Object.values(pair)[0].join(', ')}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <div>No words found for the selected month.</div>
+              )}
+            </div>
+          )}
+        </div>
+
 
 {/* Add Words Section */}
 <div className="mt-6">
