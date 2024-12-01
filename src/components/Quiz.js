@@ -69,7 +69,7 @@ const App = () => {
     }
     setLoading(true);
     try {
-      const response = await axios.get('https://wordly-backend.onrender.com/words/all', { withCredentials: false });
+      const response = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/words/all`, { withCredentials: false });
       setWordPairs([...response.data]);
       localStorage.setItem('wordPairs', JSON.stringify(response.data)); // Save to localStorage
       setShowWordPairs(true);
@@ -85,7 +85,7 @@ const App = () => {
     setSearchResult(null);
     setSearchError('');
     try {
-      const wordResponse = await axios.get(`https://wordly-backend.onrender.com/words/${searchWord}`, { withCredentials: false });
+      const wordResponse = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/words/${searchWord}`, { withCredentials: false });
       console.log('Word Response:', wordResponse.data);
 
       if (wordResponse.data && Object.keys(wordResponse.data).length > 0) {
@@ -106,7 +106,7 @@ const App = () => {
     setLoading(true);
     setSentences([]);
     try {
-      const sentenceResponse = await axios.get(`https://wordly-backend.onrender.com/sentence/${searchWord}`, { withCredentials: false });
+      const sentenceResponse = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/sentence/${searchWord}`, { withCredentials: false });
       console.log('Sentence Response:', sentenceResponse.data);
 
       // Process sentences response
@@ -137,7 +137,7 @@ const App = () => {
     try {
       const formattedDate = format(date, 'd/M/yyyy'); // format the date to d/M/yyyy
       const response = await axios.post(
-        'https://wordly-backend.onrender.com/words/date',
+        `${process.env.REACT_APP_BACKEND_URL}/words/date`,
         { date: formattedDate },
         { withCredentials: false }
       );
@@ -160,7 +160,7 @@ const App = () => {
   };
 
   const handlePasskeySubmit = () => {
-    if (passkey === '232527') {
+    if (passkey === process.env.REACT_APP_ADMIN_PASSKEY) {
       setCanAddWords(true);
       setPasskeyError('');
     } else {
@@ -198,7 +198,8 @@ const App = () => {
     };
 
     try {
-      await axios.post('https://wordly-backend.onrender.com/words', requestBody, { withCredentials: false });
+      await axios.post(`${process.env.REACT_APP_BACKEND_URL}/words`, requestBody, { withCredentials: false });
+
       alert('Words added successfully');
     } catch (error) {
       console.error('Error adding words:', error);
@@ -237,7 +238,8 @@ const App = () => {
     };
 
     try {
-      await axios.post('https://wordly-backend.onrender.com/words', requestBody, { withCredentials: false });
+      await axios.post(`${process.env.REACT_APP_BACKEND_URL}/words`, requestBody, { withCredentials: false });
+
       alert('Words added successfully');
     } catch (error) {
       console.error('Error adding words:', error);
@@ -249,7 +251,8 @@ const App = () => {
     const requestBody = { sentence: sentenceInput };
 
     try {
-      await axios.post('https://wordly-backend.onrender.com/sentence', requestBody, { withCredentials: false });
+      await axios.post(`${process.env.REACT_APP_BACKEND_URL}/sentence`, requestBody, { withCredentials: false });
+
       alert('Sentence added successfully');
       setSentenceInput(''); // Clear the input field after successful submission
     } catch (error) {
@@ -262,7 +265,7 @@ const App = () => {
     setLoading(true);
     setQuizType('random');
     try {
-      const response = await axios.get('https://wordly-backend.onrender.com/words/all', { withCredentials: false });
+      const response = await axios.post(`${process.env.REACT_APP_BACKEND_URL}/words/all`, { withCredentials: false });
       setWordPairs(response.data);
       localStorage.setItem('wordPairs', JSON.stringify(response.data)); // Save to localStorage
       setQuizActive(true);
@@ -286,7 +289,7 @@ const App = () => {
     setLoading(true);
     try {
       const datesArray = dateString.split(',').map(date => date.trim()); // split the string into an array of dates
-      const response = await axios.post('https://wordly-backend.onrender.com/words/all', { dates: datesArray }, { withCredentials: false });
+      const response = await axios.post(`${process.env.REACT_APP_BACKEND_URL}/words/all`, { withCredentials: false });
       
       const fetchedWords = response.data;
       const numberOfWordsFetched = Object.keys(fetchedWords).length;
@@ -455,7 +458,7 @@ const App = () => {
     setMonthlyWords([]);
     try {
       const formattedMonth = format(month, 'M');
-      const response = await axios.get(`https://wordly-backend.onrender.com/words/month/${formattedMonth}`, {
+      const response = await axios.get(`${process.env.REACT_APP_BACKEND_URL}/words/month/${formattedMonth}`, {
         withCredentials: false,
       });
       setMonthlyWords(response.data);
